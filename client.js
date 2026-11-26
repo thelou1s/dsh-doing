@@ -1,8 +1,10 @@
 /**
- * dsh-doing v1.2 —— 思考中循环「滴」声，出结果即停；间隔/音量可在 设置 里调。
+ * dsh-doing v1.3 —— 思考中循环「滴」声，出结果即停；需要用户确认时「滴滴」两声。
  *
  * 浏览器端：
  *   - conversation 状态 running === true 时按配置间隔循环提示音
+ *   - 会话出现待处理交互（approval / question，即 pendingInteraction）时
+ *     连播两声「滴」，同一请求只响一次
  *   - 设置 → dsh-doing 区块：间隔 0.5–5.0 秒、音量 0–1，保存到插件配置
  */
 window.__ModuleLoader__.load({
@@ -15,6 +17,8 @@ window.__ModuleLoader__.load({
     const MAX_INTERVAL = 5.0;
     const BEEP_FREQ = 880;
     const BEEP_MS = 120;
+    /** 待确认提示音：两声之间的静音间隔（毫秒） */
+    const ALERT_GAP_MS = 140;
 
     let config = { intervalSec: 1.2, volume: 0.08 };
     const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -57,12 +61,16 @@ window.__ModuleLoader__.load({
     window.addEventListener('pointerdown', unlockAudio, { once: true, capture: true });
     window.addEventListener('keydown', unlockAudio, { once: true, capture: true });
 
-    function beep() {
+    /**
+     * 播放一声「滴」。
+     * @param at 起始时间（AudioContext 时钟，秒）；省略则立即播放
+     */
+    function beep(at) {
       const ctx = ensureContext();
       if (ctx === null) return;
       const g0 = gainValue();
       if (g0 <= 0) return;
-      const now = ctx.currentTime;
+      const now = at === undefined ? ctx.currentTime : Math.max(at, ctx.currentTime);
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
@@ -74,6 +82,17 @@ window.__ModuleLoader__.load({
       gain.connect(ctx.destination);
       osc.start(now);
       osc.stop(now + BEEP_MS / 1000 + 0.02);
+    }
+
+    /** 需要用户确认时的「滴滴」两声：音色、音量与 doing 提示音完全一致。 */
+    function alertBeep() {
+      const ctx = ensureContext();
+      if (ctx === null) return;
+      if (gainValue() <= 0) return;
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      const t0 = ctx.currentTime;
+      beep(t0);
+      beep(t0 + (BEEP_MS + ALERT_GAP_MS) / 1000);
     }
 
     let holders = 0;
@@ -112,6 +131,27 @@ window.__ModuleLoader__.load({
       return running;
     }
 
+    /**
+     * 取出待处理交互对象（approval 请求 / 提问都走 uiSession 的 pendingInteraction）。
+     * 返回对象本身而非布尔值：请求被新的一个替换时引用会变，便于只对新请求响一次。
+     */
+    function selectPending(snapshot, sessionId) {
+      if (snapshot === undefined || snapshot === null) return undefined;
+      if (sessionId !== undefined) {
+        const entry = typeof snapshot.get === 'function' ? snapshot.get(sessionId) : undefined;
+        return entry === undefined || entry === null ? undefined : entry.pendingInteraction;
+      }
+      let pending;
+      if (typeof snapshot.forEach === 'function') {
+        snapshot.forEach((entry) => {
+          if (pending === undefined && entry !== undefined && entry !== null && entry.pendingInteraction) {
+            pending = entry.pendingInteraction;
+          }
+        });
+      }
+      return pending;
+    }
+
     function Doing(props) {
       const useSessionStatus = props.useSessionStatus;
       const sessionId = props.sessionId;
@@ -123,6 +163,22 @@ window.__ModuleLoader__.load({
         startBeeping();
         return () => stopBeeping();
       }, [running]);
+
+      // 需要用户确认：出现新的待处理交互时「滴滴」两声
+      const pending = typeof useSessionStatus === 'function'
+        ? useSessionStatus((snapshot) => selectPending(snapshot, sessionId))
+        : undefined;
+      const lastAlerted = React.useRef(undefined);
+      React.useEffect(() => {
+        if (pending === undefined || pending === null) {
+          lastAlerted.current = undefined;
+          return;
+        }
+        if (lastAlerted.current === pending) return;
+        lastAlerted.current = pending;
+        alertBeep();
+      }, [pending]);
+
       return null;
     }
 
@@ -185,7 +241,7 @@ window.__ModuleLoader__.load({
       };
 
       return h('div', { style: cardStyle },
-        h('div', { style: { opacity: 0.85 } }, 'Thinking beep'),
+        h('div', { style: { opacity: 0.85 } }, 'Doing beep / confirm alert (two beeps)'),
         h('div', { style: rowStyle },
           h('span', { style: labelStyle }, 'Interval (s)'),
           h('input', {
@@ -210,6 +266,10 @@ window.__ModuleLoader__.load({
             type: 'button', style: btnStyle,
             onClick: () => { unlockAudio(); beep(); },
           }, 'Preview'),
+          h('button', {
+            type: 'button', style: btnStyle,
+            onClick: () => { unlockAudio(); alertBeep(); },
+          }, 'Preview alert'),
           h('span', { style: { opacity: 0.7 } }, statusBox[0])));
     }
 
