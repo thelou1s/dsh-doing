@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "Agent 思考中时循环播放提示音，出结果即停。",
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.19.0"
+  },
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
