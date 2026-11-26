@@ -1,0 +1,31 @@
+{
+  "name": "dsh-thinking",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Agent 思考中时循环播放提示音，出结果即停。",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "icon.svg"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  },
+  "icon": "icon.svg"
+}
