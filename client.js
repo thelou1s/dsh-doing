@@ -135,10 +135,10 @@ window.__ModuleLoader__.load({
       },
         h('rect', { x: 2, y: 2, width: 60, height: 60, rx: 14, fill: '#3b82f6' }),
         h('text', {
-          x: 32, y: 43, 'text-anchor': 'middle',
+          x: 32, y: 41, 'text-anchor': 'middle',
           fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
-          fontSize: 34, fontWeight: 700, fill: '#ffffff',
-        }, 'T'));
+          fontSize: 26, fontWeight: 700, fill: '#ffffff',
+        }, 'do'));
     }
 
     // ---------- 设置区块 ----------
