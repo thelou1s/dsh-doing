@@ -24,6 +24,8 @@ export const Config = z.object({
     .description('滴滴声间隔（秒）：0.5 到 5.0，默认 1.2'),
   volume: z.number().min(0).max(1).default(0.08)
     .description('提示音音量：0 到 1，默认 0.08'),
+  alertIntervalSec: z.number().min(0.5).max(5.0).default(1.5)
+    .description('等待用户确认时的「滴滴」重播间隔（秒）：0.5 到 5.0，默认 1.5'),
 });
 
 function readBody(req, limit = 8 * 1024) {
@@ -57,6 +59,9 @@ export function apply(ctx, config) {
       if (Number.isFinite(Number(saved.volume))) {
         state.volume = Math.min(1, Math.max(0, Number(saved.volume)));
       }
+      if (Number.isFinite(Number(saved.alertIntervalSec))) {
+        state.alertIntervalSec = Math.min(5, Math.max(0.5, Number(saved.alertIntervalSec)));
+      }
     } catch {
       /* 没有状态文件就用默认值 */
     }
@@ -71,21 +76,23 @@ export function apply(ctx, config) {
   async function save(next) {
     const intervalSec = clamp(next.intervalSec, 0.5, 5.0, state.intervalSec);
     const volume = clamp(next.volume, 0, 1, state.volume);
+    const alertIntervalSec = clamp(next.alertIntervalSec, 0.5, 5.0, state.alertIntervalSec);
     state.intervalSec = intervalSec;
     state.volume = volume;
+    state.alertIntervalSec = alertIntervalSec;
     // 先写自己的状态文件：DSH 的 configEditor 在本 profile 可能不可用
     let persisted = false;
     try {
       const file = statePath();
       await mkdir(join(file, '..'), { recursive: true });
       const tmp = file + '.' + process.pid + '.tmp';
-      await writeFile(tmp, JSON.stringify({ intervalSec, volume }, null, 2) + '\n', 'utf8');
+      await writeFile(tmp, JSON.stringify({ intervalSec, volume, alertIntervalSec }, null, 2) + '\n', 'utf8');
       await rename(tmp, file);
       persisted = true;
     } catch (error) {
       ctx.logger?.warn?.('[dsh-doing] 保存配置失败: ' + String(error));
     }
-    return { saved: persisted, intervalSec, volume };
+    return { saved: persisted, intervalSec, volume, alertIntervalSec };
   }
 
   ctx.inject(['webServer'], (webCtx) => {
@@ -101,7 +108,11 @@ export function apply(ctx, config) {
         };
         try {
           if (req.method === 'GET' || req.method === 'HEAD') {
-            send(200, { intervalSec: state.intervalSec, volume: state.volume });
+            send(200, {
+              intervalSec: state.intervalSec,
+              volume: state.volume,
+              alertIntervalSec: state.alertIntervalSec,
+            });
             return;
           }
           if (req.method === 'POST') {

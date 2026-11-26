@@ -1,11 +1,12 @@
 /**
- * dsh-doing v1.3 —— 思考中循环「滴」声，出结果即停；需要用户确认时「滴滴」两声。
+ * dsh-doing v1.4 —— 思考中循环「滴」声，出结果即停；等待用户确认时循环「滴滴」两声。
  *
  * 浏览器端：
  *   - conversation 状态 running === true 时按配置间隔循环提示音
  *   - 会话出现待处理交互（approval / question，即 pendingInteraction）时
- *     连播两声「滴」，同一请求只响一次
- *   - 设置 → dsh-doing 区块：间隔 0.5–5.0 秒、音量 0–1，保存到插件配置
+ *     循环播放「滴滴」两声（120ms 响 + 140ms 间隔），请求处理完即停，
+ *     期间 doing 提示音让位，避免两套声音叠加
+ *   - 设置 → dsh-doing 区块：doing 间隔、音量、等待确认时的重播间隔，保存到插件配置
  */
 window.__ModuleLoader__.load({
   id: 'dsh-doing',
@@ -20,9 +21,10 @@ window.__ModuleLoader__.load({
     /** 待确认提示音：两声之间的静音间隔（毫秒） */
     const ALERT_GAP_MS = 140;
 
-    let config = { intervalSec: 1.2, volume: 0.08 };
+    let config = { intervalSec: 1.2, volume: 0.08, alertIntervalSec: 1.5 };
     const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
     const intervalMs = () => clamp(Number(config.intervalSec) || 1.2, MIN_INTERVAL, MAX_INTERVAL) * 1000;
+    const alertIntervalMs = () => clamp(Number(config.alertIntervalSec) || 1.5, MIN_INTERVAL, MAX_INTERVAL) * 1000;
     const gainValue = () => clamp(Number(config.volume) || 0, 0, 1);
 
     async function refreshConfig() {
@@ -34,6 +36,7 @@ window.__ModuleLoader__.load({
           config = {
             intervalSec: Number(next.intervalSec) || 1.2,
             volume: next.volume === undefined ? 0.08 : Number(next.volume),
+            alertIntervalSec: Number(next.alertIntervalSec) || 1.5,
           };
         }
       } catch {
@@ -115,6 +118,22 @@ window.__ModuleLoader__.load({
       }
     }
 
+    // ---------- 等待用户确认：循环「滴滴」 ----------
+    let alertTimer = null;
+    function alertTick() {
+      alertBeep();
+      alertTimer = window.setTimeout(alertTick, alertIntervalMs());
+    }
+    function startAlerting() {
+      if (alertTimer !== null) return;
+      alertTick();
+    }
+    function stopAlerting() {
+      if (alertTimer === null) return;
+      window.clearTimeout(alertTimer);
+      alertTimer = null;
+    }
+
     // ---------- 状态 ----------
     function selectRunning(snapshot, sessionId) {
       if (snapshot === undefined || snapshot === null) return false;
@@ -155,29 +174,27 @@ window.__ModuleLoader__.load({
     function Doing(props) {
       const useSessionStatus = props.useSessionStatus;
       const sessionId = props.sessionId;
-      const running = typeof useSessionStatus === 'function'
-        ? useSessionStatus((snapshot) => selectRunning(snapshot, sessionId))
-        : false;
-      React.useEffect(() => {
-        if (!running) return undefined;
-        startBeeping();
-        return () => stopBeeping();
-      }, [running]);
-
-      // 需要用户确认：出现新的待处理交互时「滴滴」两声
       const pending = typeof useSessionStatus === 'function'
         ? useSessionStatus((snapshot) => selectPending(snapshot, sessionId))
         : undefined;
-      const lastAlerted = React.useRef(undefined);
+      const waiting = pending !== undefined && pending !== null;
+      const running = typeof useSessionStatus === 'function'
+        ? useSessionStatus((snapshot) => selectRunning(snapshot, sessionId))
+        : false;
+
+      // doing 提示音：仅在跑、且不在等用户确认时响（等待期间由「滴滴」接管，避免两套声音叠在一起）
       React.useEffect(() => {
-        if (pending === undefined || pending === null) {
-          lastAlerted.current = undefined;
-          return;
-        }
-        if (lastAlerted.current === pending) return;
-        lastAlerted.current = pending;
-        alertBeep();
-      }, [pending]);
+        if (!running || waiting) return undefined;
+        startBeeping();
+        return () => stopBeeping();
+      }, [running, waiting]);
+
+      // 等待用户确认：循环「滴滴」直到请求被处理
+      React.useEffect(() => {
+        if (!waiting) return undefined;
+        startAlerting();
+        return () => stopAlerting();
+      }, [waiting]);
 
       return null;
     }
@@ -210,6 +227,7 @@ window.__ModuleLoader__.load({
     function Settings() {
       const intervalBox = React.useState(1.2);
       const volumeBox = React.useState(0.08);
+      const alertBox = React.useState(1.5);
       const statusBox = React.useState('');
 
       React.useEffect(() => {
@@ -220,13 +238,18 @@ window.__ModuleLoader__.load({
             if (!alive || j === undefined) return;
             intervalBox[1](Number(j.intervalSec) || 1.2);
             volumeBox[1](j.volume === undefined ? 0.08 : Number(j.volume));
+            alertBox[1](Number(j.alertIntervalSec) || 1.5);
           })
           .catch(() => {});
         return () => { alive = false; };
       }, []);
 
       const save = () => {
-        const body = JSON.stringify({ intervalSec: intervalBox[0], volume: volumeBox[0] });
+        const body = JSON.stringify({
+          intervalSec: intervalBox[0],
+          volume: volumeBox[0],
+          alertIntervalSec: alertBox[0],
+        });
         fetch('/dsh-doing/config', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -260,6 +283,15 @@ window.__ModuleLoader__.load({
             style: { flex: 1, maxWidth: 260 },
           }),
           h('span', { style: valueStyle }, Number(volumeBox[0]).toFixed(2))),
+        h('div', { style: rowStyle },
+          h('span', { style: labelStyle }, 'Alert every (s)'),
+          h('input', {
+            type: 'range', min: MIN_INTERVAL, max: MAX_INTERVAL, step: 0.1,
+            value: alertBox[0],
+            onChange: (e) => alertBox[1](Number(e.target.value)),
+            style: { flex: 1, maxWidth: 260 },
+          }),
+          h('span', { style: valueStyle }, Number(alertBox[0]).toFixed(1) + 's')),
         h('div', { style: { ...rowStyle, gap: 12 } },
           h('button', { type: 'button', style: btnStyle, onClick: save }, 'Save'),
           h('button', {
