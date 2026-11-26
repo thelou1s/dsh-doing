@@ -6,7 +6,7 @@
  *   - 会话出现待处理交互（approval / question，即 pendingInteraction）时
  *     循环播放「滴滴」两声（120ms 响 + 140ms 间隔），请求处理完即停，
  *     期间 doing 提示音让位，避免两套声音叠加
- *   - 设置 → dsh-doing 区块：doing 间隔、音量、等待确认时的重播间隔，保存到插件配置
+ *   - 设置 → dsh-doing 区块：音量（两种提示音共用）、doing 间隔、等待确认时的重播间隔
  */
 window.__ModuleLoader__.load({
   id: 'dsh-doing',
@@ -21,16 +21,11 @@ window.__ModuleLoader__.load({
     /** 待确认提示音：两声之间的静音间隔（毫秒） */
     const ALERT_GAP_MS = 140;
 
-    let config = { intervalSec: 1.2, volume: 0.08, alertIntervalSec: 1.5, alertVolume: 0.35 };
+    let config = { intervalSec: 1.2, volume: 0.08, alertIntervalSec: 1.5 };
     const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
     const intervalMs = () => clamp(Number(config.intervalSec) || 1.2, MIN_INTERVAL, MAX_INTERVAL) * 1000;
     const alertIntervalMs = () => clamp(Number(config.alertIntervalSec) || 1.5, MIN_INTERVAL, MAX_INTERVAL) * 1000;
     const gainValue = () => clamp(Number(config.volume) || 0, 0, 1);
-    /** 等待确认时的音量：默认更响，避免错过 */
-    const alertGainValue = () => {
-      const v = Number(config.alertVolume);
-      return clamp(Number.isFinite(v) ? v : 0.35, 0, 1);
-    };
 
     async function refreshConfig() {
       try {
@@ -42,7 +37,6 @@ window.__ModuleLoader__.load({
             intervalSec: Number(next.intervalSec) || 1.2,
             volume: next.volume === undefined ? 0.08 : Number(next.volume),
             alertIntervalSec: Number(next.alertIntervalSec) || 1.5,
-            alertVolume: Number.isFinite(Number(next.alertVolume)) ? Number(next.alertVolume) : 0.35,
           };
         }
       } catch {
@@ -74,13 +68,10 @@ window.__ModuleLoader__.load({
      * 播放一声「滴」。
      * @param at 起始时间（AudioContext 时钟，秒）；省略则立即播放
      */
-    function beep(at, gainOverride) {
+    function beep(at) {
       const ctx = ensureContext();
       if (ctx === null) return;
-      const g0 = clamp(
-        gainOverride === undefined ? gainValue() : Number(gainOverride),
-        0, 1,
-      );
+      const g0 = gainValue();
       if (g0 <= 0) return;
       const now = at === undefined ? ctx.currentTime : Math.max(at, ctx.currentTime);
       const osc = ctx.createOscillator();
@@ -100,12 +91,12 @@ window.__ModuleLoader__.load({
     function alertBeep() {
       const ctx = ensureContext();
       if (ctx === null) return;
-      const g = alertGainValue();
+      const g = gainValue();
       if (g <= 0) return;
       if (ctx.state === 'suspended') ctx.resume().catch(() => {});
       const t0 = ctx.currentTime;
-      beep(t0, g);
-      beep(t0 + (BEEP_MS + ALERT_GAP_MS) / 1000, g);
+      beep(t0);
+      beep(t0 + (BEEP_MS + ALERT_GAP_MS) / 1000);
     }
 
     let holders = 0;
@@ -239,7 +230,6 @@ window.__ModuleLoader__.load({
       const intervalBox = React.useState(1.2);
       const volumeBox = React.useState(0.08);
       const alertBox = React.useState(1.5);
-      const alertVolBox = React.useState(0.35);
       const statusBox = React.useState('');
 
       React.useEffect(() => {
@@ -251,7 +241,6 @@ window.__ModuleLoader__.load({
             intervalBox[1](Number(j.intervalSec) || 1.2);
             volumeBox[1](j.volume === undefined ? 0.08 : Number(j.volume));
             alertBox[1](Number(j.alertIntervalSec) || 1.5);
-            alertVolBox[1](Number.isFinite(Number(j.alertVolume)) ? Number(j.alertVolume) : 0.35);
           })
           .catch(() => {});
         return () => { alive = false; };
@@ -262,7 +251,6 @@ window.__ModuleLoader__.load({
           intervalSec: intervalBox[0],
           volume: volumeBox[0],
           alertIntervalSec: alertBox[0],
-          alertVolume: alertVolBox[0],
         });
         fetch('/dsh-doing/config', {
           method: 'POST',
@@ -280,15 +268,6 @@ window.__ModuleLoader__.load({
       return h('div', { style: cardStyle },
         h('div', { style: { opacity: 0.85 } }, 'Doing beep / confirm alert (two beeps)'),
         h('div', { style: rowStyle },
-          h('span', { style: labelStyle }, 'Interval (s)'),
-          h('input', {
-            type: 'range', min: MIN_INTERVAL, max: MAX_INTERVAL, step: 0.1,
-            value: intervalBox[0],
-            onChange: (e) => intervalBox[1](Number(e.target.value)),
-            style: { flex: 1, maxWidth: 260 },
-          }),
-          h('span', { style: valueStyle }, Number(intervalBox[0]).toFixed(1) + 's')),
-        h('div', { style: rowStyle },
           h('span', { style: labelStyle }, 'Volume'),
           h('input', {
             type: 'range', min: 0, max: 1, step: 0.01,
@@ -298,6 +277,15 @@ window.__ModuleLoader__.load({
           }),
           h('span', { style: valueStyle }, Number(volumeBox[0]).toFixed(2))),
         h('div', { style: rowStyle },
+          h('span', { style: labelStyle }, 'Interval (s)'),
+          h('input', {
+            type: 'range', min: MIN_INTERVAL, max: MAX_INTERVAL, step: 0.1,
+            value: intervalBox[0],
+            onChange: (e) => intervalBox[1](Number(e.target.value)),
+            style: { flex: 1, maxWidth: 260 },
+          }),
+          h('span', { style: valueStyle }, Number(intervalBox[0]).toFixed(1) + 's')),
+        h('div', { style: rowStyle },
           h('span', { style: labelStyle }, 'Alert every (s)'),
           h('input', {
             type: 'range', min: MIN_INTERVAL, max: MAX_INTERVAL, step: 0.1,
@@ -306,15 +294,6 @@ window.__ModuleLoader__.load({
             style: { flex: 1, maxWidth: 260 },
           }),
           h('span', { style: valueStyle }, Number(alertBox[0]).toFixed(1) + 's')),
-        h('div', { style: rowStyle },
-          h('span', { style: labelStyle }, 'Alert volume'),
-          h('input', {
-            type: 'range', min: 0, max: 1, step: 0.01,
-            value: alertVolBox[0],
-            onChange: (e) => alertVolBox[1](Number(e.target.value)),
-            style: { flex: 1, maxWidth: 260 },
-          }),
-          h('span', { style: valueStyle }, Number(alertVolBox[0]).toFixed(2))),
         h('div', { style: { ...rowStyle, gap: 12 } },
           h('button', { type: 'button', style: btnStyle, onClick: save }, 'Save'),
           h('button', {
