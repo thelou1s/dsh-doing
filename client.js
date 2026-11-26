@@ -228,7 +228,7 @@ window.__ModuleLoader__.load({
 
     function Settings() {
       const intervalBox = React.useState(1.2);
-      const volumeBox = React.useState(0.08);
+      const volumeBox = React.useState(8);   // UI 用 0–100 的百分比，保存时换算回 0–1
       const alertBox = React.useState(1.5);
       const statusBox = React.useState('');
 
@@ -239,7 +239,7 @@ window.__ModuleLoader__.load({
           .then((j) => {
             if (!alive || j === undefined) return;
             intervalBox[1](Number(j.intervalSec) || 1.2);
-            volumeBox[1](j.volume === undefined ? 0.08 : Number(j.volume));
+            volumeBox[1](Math.round((j.volume === undefined ? 0.08 : Number(j.volume)) * 100));
             alertBox[1](Number(j.alertIntervalSec) || 1.5);
           })
           .catch(() => {});
@@ -249,7 +249,7 @@ window.__ModuleLoader__.load({
       const save = () => {
         const body = JSON.stringify({
           intervalSec: intervalBox[0],
-          volume: volumeBox[0],
+          volume: Math.round(Number(volumeBox[0])) / 100,
           alertIntervalSec: alertBox[0],
         });
         fetch('/dsh-doing/config', {
@@ -270,12 +270,12 @@ window.__ModuleLoader__.load({
         h('div', { style: rowStyle },
           h('span', { style: labelStyle }, 'Volume'),
           h('input', {
-            type: 'range', min: 0, max: 1, step: 0.01,
+            type: 'range', min: 0, max: 100, step: 1,
             value: volumeBox[0],
             onChange: (e) => volumeBox[1](Number(e.target.value)),
             style: { flex: 1, maxWidth: 260 },
           }),
-          h('span', { style: valueStyle }, Number(volumeBox[0]).toFixed(2))),
+          h('span', { style: valueStyle }, Math.round(Number(volumeBox[0])) + '%')),
         h('div', { style: rowStyle },
           h('span', { style: labelStyle }, 'Interval (s)'),
           h('input', {
