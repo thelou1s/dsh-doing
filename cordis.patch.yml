@@ -1,4 +1,4 @@
-# dsh-thinking bundle patch —— 把插件挂进 DSH 配置树
+# dsh-doing bundle patch —— 把插件挂进 DSH 配置树
 - insert:
-    - id: dsh-thinking
-      name: dsh-thinking
+    - id: dsh-doing
+      name: dsh-doing

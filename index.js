@@ -1,8 +1,8 @@
 /**
- * dsh-thinking —— Host 侧：配置 schema + 读写路由。
+ * dsh-doing —— Host 侧：配置 schema + 读写路由。
  *
- * GET  /dsh-thinking/config   → { intervalSec, volume }
- * POST /dsh-thinking/config   → 通过 configEditor 把自己的这行配置持久化
+ * GET  /dsh-doing/config   → { intervalSec, volume }
+ * POST /dsh-doing/config   → 通过 configEditor 把自己的这行配置持久化
  *
  * 浏览器端（client.js）在 设置 里渲染表单，并每次响铃前读取该配置。
  */
@@ -14,10 +14,10 @@ import { homedir } from 'node:os';
 /** 自己的状态文件（DSH 配置的持久化走不通时用它兜底）。 */
 function statePath() {
   const home = process.env.DSH_HOME ?? join(homedir(), '.dsh');
-  return join(home, 'dsh-thinking.config.json');
+  return join(home, 'dsh-doing.config.json');
 }
 
-export const name = 'dsh-thinking';
+export const name = 'dsh-doing';
 
 export const Config = z.object({
   intervalSec: z.number().min(0.5).max(5.0).default(1.2)
@@ -83,7 +83,7 @@ export function apply(ctx, config) {
       await rename(tmp, file);
       persisted = true;
     } catch (error) {
-      ctx.logger?.warn?.('[dsh-thinking] 保存配置失败: ' + String(error));
+      ctx.logger?.warn?.('[dsh-doing] 保存配置失败: ' + String(error));
     }
     return { saved: persisted, intervalSec, volume };
   }
@@ -91,7 +91,7 @@ export function apply(ctx, config) {
   ctx.inject(['webServer'], (webCtx) => {
     webCtx.effect(() => webCtx.webServer.register({
       kind: 'exact',
-      path: '/dsh-thinking/config',
+      path: '/dsh-doing/config',
       handler: async (req, res) => {
         const send = (code, data) => {
           res.statusCode = code;
@@ -119,6 +119,6 @@ export function apply(ctx, config) {
           send(500, { error: String(error && error.message ? error.message : error) });
         }
       },
-    }), 'dsh-thinking: config route');
+    }), 'dsh-doing: config route');
   });
 }

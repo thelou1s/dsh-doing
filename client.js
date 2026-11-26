@@ -1,12 +1,12 @@
 /**
- * dsh-thinking v1.2 —— 思考中循环「滴」声，出结果即停；间隔/音量可在 设置 里调。
+ * dsh-doing v1.2 —— 思考中循环「滴」声，出结果即停；间隔/音量可在 设置 里调。
  *
  * 浏览器端：
  *   - conversation 状态 running === true 时按配置间隔循环提示音
- *   - 设置 → dsh-thinking 区块：间隔 0.5–5.0 秒、音量 0–1，保存到插件配置
+ *   - 设置 → dsh-doing 区块：间隔 0.5–5.0 秒、音量 0–1，保存到插件配置
  */
 window.__ModuleLoader__.load({
-  id: 'dsh-thinking',
+  id: 'dsh-doing',
   factory(require) {
     const React = require('react');
     const h = React.createElement;
@@ -23,7 +23,7 @@ window.__ModuleLoader__.load({
 
     async function refreshConfig() {
       try {
-        const res = await fetch('/dsh-thinking/config', { cache: 'no-store' });
+        const res = await fetch('/dsh-doing/config', { cache: 'no-store' });
         if (!res.ok) return;
         const next = await res.json();
         if (next && typeof next === 'object') {
@@ -158,7 +158,7 @@ window.__ModuleLoader__.load({
 
       React.useEffect(() => {
         let alive = true;
-        fetch('/dsh-thinking/config', { cache: 'no-store' })
+        fetch('/dsh-doing/config', { cache: 'no-store' })
           .then((r) => (r.ok ? r.json() : undefined))
           .then((j) => {
             if (!alive || j === undefined) return;
@@ -171,7 +171,7 @@ window.__ModuleLoader__.load({
 
       const save = () => {
         const body = JSON.stringify({ intervalSec: intervalBox[0], volume: volumeBox[0] });
-        fetch('/dsh-thinking/config', {
+        fetch('/dsh-doing/config', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body,
@@ -223,21 +223,21 @@ window.__ModuleLoader__.load({
         if (ctx.slots === undefined) return;
         ctx.slots.inject('shell.overlay', () => ctx.slots.register({
           name: 'shell.overlay',
-          id: 'dsh-thinking',
+          id: 'dsh-doing',
           order: 999,
           inject: () => ({}),
         }, Doing));
 
         ctx.slots.inject('settings.section.icon', () => ctx.slots.register({
           name: 'settings.section.icon',
-          id: 'dsh-thinking',
+          id: 'dsh-doing',
         }, DoingIcon));
 
         ctx.slots.inject('settings.section', () => ctx.slots.register({
           name: 'settings.section',
-          id: 'dsh-thinking',
+          id: 'dsh-doing',
           order: 60,
-          label: () => 'dsh-thinking',
+          label: () => 'dsh-doing',
           inject: () => ({}),
         }, Settings));
       },
