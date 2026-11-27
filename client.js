@@ -219,7 +219,7 @@ window.__ModuleLoader__.load({
     // ---------- 设置区块 ----------
     const cardStyle = { padding: '12px 0', display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 };
     const rowStyle = { display: 'flex', alignItems: 'center', gap: 10 };
-    const labelStyle = { width: 96, flex: '0 0 auto', opacity: 0.85 };
+    const labelStyle = { width: 140, flex: '0 0 auto', opacity: 0.85 };
     const valueStyle = { width: 64, opacity: 0.9, fontVariantNumeric: 'tabular-nums' };
     const btnStyle = {
       padding: '4px 12px', borderRadius: 6, border: '1px solid rgba(127,127,127,.4)',
@@ -266,9 +266,9 @@ window.__ModuleLoader__.load({
       };
 
       return h('div', { style: cardStyle },
-        h('div', { style: { opacity: 0.85 } }, 'Doing beep / confirm alert (two beeps)'),
+        h('div', { style: { opacity: 0.85 } }, 'Doing alert / Confirm alert'),
         h('div', { style: rowStyle },
-          h('span', { style: labelStyle }, 'Volume'),
+          h('span', { style: labelStyle }, 'Alert volume'),
           h('input', {
             type: 'range', min: 0, max: 100, step: 1,
             value: volumeBox[0],
@@ -277,7 +277,7 @@ window.__ModuleLoader__.load({
           }),
           h('span', { style: valueStyle }, Math.round(Number(volumeBox[0])) + '%')),
         h('div', { style: rowStyle },
-          h('span', { style: labelStyle }, 'Interval (s)'),
+          h('span', { style: labelStyle }, 'Doing interval(s)'),
           h('input', {
             type: 'range', min: MIN_INTERVAL, max: MAX_INTERVAL, step: 0.1,
             value: intervalBox[0],
@@ -286,7 +286,7 @@ window.__ModuleLoader__.load({
           }),
           h('span', { style: valueStyle }, Number(intervalBox[0]).toFixed(1) + 's')),
         h('div', { style: rowStyle },
-          h('span', { style: labelStyle }, 'Alert every (s)'),
+          h('span', { style: labelStyle }, 'Confirm interval(s)'),
           h('input', {
             type: 'range', min: MIN_INTERVAL, max: MAX_INTERVAL, step: 0.1,
             value: alertBox[0],
