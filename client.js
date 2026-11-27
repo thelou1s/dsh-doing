@@ -303,7 +303,7 @@ window.__ModuleLoader__.load({
           h('button', {
             type: 'button', style: btnStyle,
             onClick: () => { unlockAudio(); alertBeep(); },
-          }, 'Preview alert'),
+          }, 'Preview confirm'),
           h('span', { style: { opacity: 0.7 } }, statusBox[0])));
     }
 
