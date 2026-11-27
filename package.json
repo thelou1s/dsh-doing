@@ -1,9 +1,25 @@
 {
   "name": "dsh-doing",
   "version": "0.1.0",
-  "private": true,
+  "description": "Plays a looping beep while the agent works and a two-beep alert while it waits for your confirmation.",
+  "keywords": [
+    "dsh-plugin",
+    "dsh-bundle",
+    "notification",
+    "audio",
+    "beep",
+    "alert"
+  ],
+  "license": "MIT",
   "type": "module",
-  "description": "Agent 思考中时循环播放提示音，出结果即停。",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thelou1s/dsh-doing.git"
+  },
+  "homepage": "https://github.com/thelou1s/dsh-doing#readme",
+  "engines": {
+    "dsh": ">=0.2.0"
+  },
   "dependencies": {
     "@deepseek-ai/schemastery": "^3.19.0"
   },

@@ -1,0 +1,66 @@
+{
+  "format": 1,
+  "title": {
+    "en": "dsh-doing",
+    "zh": "dsh-doing"
+  },
+  "description": {
+    "en": "Agent activity and confirmation alerts for DeepSeek Harness.",
+    "zh": "DeepSeek Harness 的思考提示音与等待确认提醒。"
+  },
+  "metadata": {
+    "categories": {
+      "notify": {
+        "title": {
+          "en": "Notifications",
+          "zh": "通知提醒"
+        }
+      }
+    },
+    "labels": {},
+    "sortKeys": {}
+  },
+  "plugins": [
+    {
+      "name": "dsh-doing",
+      "title": {
+        "en": "dsh-doing",
+        "zh": "dsh-doing"
+      },
+      "description": {
+        "en": "Plays a looping beep while the agent works and a two-beep alert while it waits for your confirmation.",
+        "zh": "Agent 干活时循环播放提示音，等待你确认时循环播放两声提醒。"
+      },
+      "icon": "assets/icon-180.png",
+      "author": "thelou1s",
+      "homepage": "https://github.com/thelou1s/dsh-doing",
+      "repository": {
+        "url": "https://github.com/thelou1s/dsh-doing"
+      },
+      "metadata": {
+        "category": "notify",
+        "keywords": [
+          "beep",
+          "alert",
+          "notification"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "0.1.0",
+          "publishTimestamp": 1764200000,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/thelou1s/dsh-doing",
+            "commit": "02ee5e0d80e18dc09e4caa3225d81f51c76f17fe"
+          },
+          "engines": {
+            "dsh": ">=0.2.0"
+          }
+        }
+      ]
+    }
+  ]
+}
